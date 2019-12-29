@@ -1,7 +1,9 @@
 ### Functions for processing raw profiles
 
 # A function for estimating the index of dispersion, which is used when
-# estimating standard errors for each segment mean
+# estimating standard errors for each segment mean. This is an old version,
+# which I'm keeping just to compare to the newer version, "timeseries.iod",
+# below.
 diffsum.tm.2 <- function(v)
 {
   y <- v[-1]
@@ -12,6 +14,42 @@ diffsum.tm.2 <- function(v)
   mean.est <- 1.05*(.95*tm + .05 * q)
   return(mean.est)
 }
+
+# Estimate the standard deviation of a normal distribution with L2E, assuming
+# the normal distribution has mean 0.
+l2e.normal.sd <- function(xs)
+{
+  optim.result <- optimize(
+    # L2E loss function
+    f=function(sd)
+    # "Data part", the sample average of the likelihood
+    -2 * mean(dnorm(xs, sd=sd)) +
+    # "Theta part", the integral of the squared density
+      1/(2*sqrt(pi)*sd),
+    # Parameter: standard deviation of the normal distribution fit
+    lower=mad(xs)/100, upper=mad(xs)*100)
+  return(optim.result$minimum)
+}
+
+# A function for estimating the index of dispersion, which is used when
+# estimating standard errors for each segment mean
+timeseries.iod <- function(v)
+{
+  # Differences between pairs of values
+  y <- v[-1]
+  x <- v[-length(v)]
+  # Normalize the differences using the sum. The result should be around zero,
+  # plus or minus square root of the index of dispersion
+  vals.unfiltered <- (y-x)/sqrt(y+x)
+  vals <- vals.unfiltered[y + x  >= 1]
+  # Assuming most of the normalized differences follow a normal distribution,
+  # estimate the standard deviation
+  val.sd <- l2e.normal.sd(vals)
+  # Square this standard deviation to obtain an estimate of the index of
+  # dispersion
+  return(val.sd^2)
+}
+
 # Version of prof2invals which records more information
 # Output table has chrom, seg_start_relpos, seg_end_relpos, length, location,
 # ratio, and ratio_sd
