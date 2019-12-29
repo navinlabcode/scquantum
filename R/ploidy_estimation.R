@@ -4,6 +4,8 @@
 # estimating standard errors for each segment mean. This is an old version,
 # which I'm keeping just to compare to the newer version, "timeseries.iod",
 # below.
+
+#' @export
 diffsum.tm.2 <- function(v)
 {
   y <- v[-1]
@@ -33,6 +35,8 @@ l2e.normal.sd <- function(xs)
 
 # A function for estimating the index of dispersion, which is used when
 # estimating standard errors for each segment mean
+
+#' @export
 timeseries.iod <- function(v)
 {
   # Differences between pairs of values
@@ -107,7 +111,7 @@ weighted.ecf <- Vectorize(function(y, sds, s)
 }, 's')
 
 # Local maximum of the weighted empirical characteristic function
-dyn.load("ecf_local_max.dylib")
+#dyn.load("ecf_local_max.dylib")
 ecf.local.max <- function(s, y, sds)
 {
   stopifnot(length(y) == length(sds))
