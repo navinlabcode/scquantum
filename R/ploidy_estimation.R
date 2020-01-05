@@ -54,6 +54,23 @@ timeseries.iod <- function(v)
   return(val.sd^2)
 }
 
+# A variance-stabilizing transform for data where the mean varies but the index
+# of dispersion stays the same. "gat" stands for "generalized Anscombe transform"
+
+#' @export
+gat <- function(x, iod)
+{
+  # When index of dispersion is above 4, transformation will be imaginary for
+  # low inputs. So, you need to check if it's real-valued. If it's imaginary,
+  # return NA.
+  ifelse(x + (4-iod)/8 > 0,
+    # Due to vectorization, this will get executed even when the result is
+    # imaginary, resulting in a warning. Therefore, suppress warnings.
+    suppressWarnings((2 / sqrt(iod)) * sqrt(x + (4-iod)/8)),
+    NA
+  )
+}
+
 # Version of prof2invals which records more information
 # Output table has chrom, seg_start_relpos, seg_end_relpos, length, location,
 # ratio, and ratio_sd
