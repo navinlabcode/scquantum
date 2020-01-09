@@ -71,11 +71,21 @@ gat <- function(x, iod)
   )
 }
 
+#' @useDynLib scquantum tf_dp_wrapper
+tf.dp <- function(y, lam)
+{
+  n <- length(y)
+  stopifnot(length(lam)==1)
+  .C("tf_dp_wrapper", n=as.integer(n), y=as.numeric(y), lam=as.double(lam)[1], beta=numeric(n))$beta
+}
+
+# Refactoring prof2invals
+
 # Version of prof2invals which records more information
 # Output table has chrom, seg_start_relpos, seg_end_relpos, length, location,
 # ratio, and ratio_sd
 prof2invals <- function(inprof, lambda)
-{  
+{
   # Transform to try and get data which are normally distributed around a
   # segment-specific mean, with the same variance for each segment
   transformed.profile <- log2(inprof/mean(inprof) + 0.15)
@@ -84,7 +94,7 @@ prof2invals <- function(inprof, lambda)
   chrom.profiles <- split(transformed.profile, chrom.column)
   # For each penalty value, get a segmented profile in long format
   segmented.profiles <-
-    Reduce(cbind, lapply(chrom.profiles, function(x) 
+    Reduce(cbind, lapply(chrom.profiles, function(x)
                          flsaGetSolution(flsa(x), lambda2=lambda)))
   # For each penalty value, number bins according to what segment they're in
   is.newseg <- t(apply(segmented.profiles, 1, function(segmented.profile)
@@ -136,7 +146,7 @@ ecf.local.max <- function(s, y, sds)
   {
     return(c(peak_location=NA, peak_height=NA, peak_phase=NA))
   }
-  call.results <- 
+  call.results <-
      .C("ecf_local_max", s=as.double(s), nys=length(y), ys=as.double(y),
      nsigmas=length(sds), sigmas=as.double(sds),
      peak_location=double(1), peak_height=double(1), peak_phase=double(1))
