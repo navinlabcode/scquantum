@@ -2,5 +2,7 @@
 
 export(diffsum.tm.2)
 export(gat)
+export(l2e.normal.sd)
+export(prof2invals)
 export(timeseries.iod)
 useDynLib(scquantum,tf_dp_wrapper)

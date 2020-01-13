@@ -19,6 +19,8 @@ diffsum.tm.2 <- function(v)
 
 # Estimate the standard deviation of a normal distribution with L2E, assuming
 # the normal distribution has mean 0.
+
+#' @export
 l2e.normal.sd <- function(xs)
 {
   optim.result <- optimize(
@@ -121,7 +123,7 @@ segment.summarize <- function(inprof, lambda, trans, seg, loc, se)
 
   # Summarize the segments, recording three numbers: estimate the mean of each
   # segment, the standard error of the mean, and record the length of the
-  # segment
+  # segment.
   means <- lapply(1:nlambda, function(i)
     tapply(inprof, segnums[,i], loc)
   )
@@ -131,6 +133,7 @@ segment.summarize <- function(inprof, lambda, trans, seg, loc, se)
   lengths <- lapply(1:nlambda, function(i)
     tapply(inprof, segnums[,i], length)
   )
+
   # From the lengths, get the start and end indices
   end.indices <- lapply(lengths, cumsum)
   start.indices <- lapply(end.indices, function(x) c(0, x[-length(x)]) + 1)
@@ -141,7 +144,8 @@ segment.summarize <- function(inprof, lambda, trans, seg, loc, se)
   ))
 }
 
-prof2invals.refactored <- function(
+#' @export
+prof2invals <- function(
   # The input required for segmentation: the profile to be segmented, and the
   # penalty values for the segmentation
   inprof, lambda,
@@ -162,16 +166,13 @@ prof2invals.refactored <- function(
   # end positions need to go in the second.
   left.annotations <- annotations[,c(chrom.colname, bin.start.colname),drop=FALSE]
   right.annotations <- annotations[,bin.end.colname,drop=FALSE]
-  # Name them according to what I want the column names in the output to be
-  colnames(left.annotations) <- c("chrom", "seg_start_relpos")
-  colnames(right.annotations) <- "seg_end_relpos"
 
   # Segment the profile and annotate the results
   annotated.segmented.counts <- Reduce(rbind, mapply(function(segments, annotations1, annotations2)
     cbind(annotations1[segments$start_index,,drop=FALSE], annotations2[segments$end_index,,drop=FALSE], segments),
     # Split the profile by chromosome and segment each chromosome separately,
     # guaranteeing that chromosome boundaries are segment boundaries
-    tapply(ubers.joined.local$gc_bincounts[[3]], annotations[[chrom.colname]], scquantum:::segment.summarize, lambda=lambda,
+    tapply(inprof, annotations[[chrom.colname]], scquantum:::segment.summarize, lambda=lambda,
       # The functions to be used to transform the data, to segment it, to estimate
       # the segment means, and to estimate the standard error of the means
       trans=function(x) log2(x / mean(x) + 0.15),
@@ -186,7 +187,7 @@ prof2invals.refactored <- function(
     # list, or a sarcastic comment about how the code was written
     SIMPLIFY=FALSE))
 
-  return(annotated.segmented.counts[,c("chrom", "seg_start_relpos", "seg_end_relpos", "penalty", "mean", "se", "length")])
+  return(annotated.segmented.counts[,c("penalty", chrom.colname, bin.start.colname, bin.end.colname, "mean", "se", "length")])
 }
 
 ### Empirical characteristic functions and maxima
