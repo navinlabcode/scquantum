@@ -193,12 +193,37 @@ prof2invals <- function(
 ### Empirical characteristic functions and maxima
 
 # Evaluate the weighted empirical characteristic function
+#' @export
 weighted.ecf <- Vectorize(function(y, sds, s)
 {
   variances <- 1 - exp(-4 * pi^2 * sds^2 * s^2)
   weights <- (1/variances) / sum(1/variances)
   sum(weights * exp(1i * (2*pi) * s * y))
 }, 's')
+
+# Global maximum of the weighted empirical characteristic function
+#' @export
+ecf.global.max <- function(y, sds, smin=1, smax = 8)
+{
+  svals <- seq(smin, smax, by=0.01)
+  polar.quantogram <- weighted.ecf(y, sds, svals)
+  max.index <- which.max(Mod(polar.quantogram))
+  if (length(max.index) == 1)
+  {
+    return(c(
+      peak_location = svals[max.index],
+      peak_height = Mod(polar.quantogram)[max.index],
+      peak_phase = Arg(polar.quantogram)[max.index]
+    ))
+  } else
+  {
+    return(c(
+      peak_location = NA,
+      peak_height = NA,
+      peak_phase = NA
+    ))
+  }
+}
 
 # Local maximum of the weighted empirical characteristic function
 #dyn.load("ecf_local_max.dylib")
