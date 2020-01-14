@@ -31,7 +31,7 @@ l2e.normal.sd <- function(xs)
     # "Theta part", the integral of the squared density
       1/(2*sqrt(pi)*sd),
     # Parameter: standard deviation of the normal distribution fit
-    lower=mad(xs)/100, upper=mad(xs)*100)
+    interval = c(0, diff(range(xs))))
   return(optim.result$minimum)
 }
 
