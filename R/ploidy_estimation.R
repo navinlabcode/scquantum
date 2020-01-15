@@ -165,7 +165,10 @@ prof2invals <- function(
   # but of course the bin start positions need to go in the first, and the bin
   # end positions need to go in the second.
   left.annotations <- annotations[,c(chrom.colname, bin.start.colname),drop=FALSE]
-  right.annotations <- annotations[,bin.end.colname,drop=FALSE]
+  # If you don't want to annotate with bin ends, you can put in NULL, and the
+  # right annotations will be a data frame with no columns
+  right.annotations <- if (is.null(bin.end.colname)) {data.frame()[1:nrow(annotations),]} else
+    {annotations[,bin.end.colname,drop=FALSE]}
 
   # Segment the profile and annotate the results
   annotated.segmented.counts <- Reduce(rbind, mapply(function(segments, annotations1, annotations2)
