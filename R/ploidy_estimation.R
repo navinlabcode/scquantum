@@ -178,7 +178,7 @@ prof2invals <- function(
     tapply(inprof, annotations[[chrom.colname]], scquantum:::segment.summarize, lambda=lambda,
       # The functions to be used to transform the data, to segment it, to estimate
       # the segment means, and to estimate the standard error of the means
-      trans=function(x) log2(x / mean(x) + 0.15),
+      trans = function(x) {gat.result <- gat(x, iod=iod.est); ifelse(is.na(gat.result), 0, gat.result)},
       seg = scquantum:::tf.dp, loc = median,
       se = function(x) sqrt(pi/2) * sqrt(iod.est * median(x) / length(x))
     ),
