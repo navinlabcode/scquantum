@@ -78,7 +78,8 @@ tf.dp <- Vectorize(function(y, lam)
 {
   n <- length(y)
   stopifnot(length(lam)==1)
-  .C("tf_dp_wrapper", n=as.integer(n), y=as.numeric(y), lam=as.double(lam)[1], beta=numeric(n))$beta
+  .C("tf_dp_wrapper", n=as.integer(n), y=as.numeric(y),
+     lam=as.double(lam)[1], beta=numeric(n))$beta
 }, "lam")
 
 # Segment a profile, and summarize the segments. Output has columns lambda,
@@ -171,14 +172,21 @@ prof2invals <- function(
     {annotations[,bin.end.colname,drop=FALSE]}
 
   # Segment the profile and annotate the results
-  annotated.segmented.counts <- Reduce(rbind, mapply(function(segments, annotations1, annotations2)
-    cbind(annotations1[segments$start_index,,drop=FALSE], annotations2[segments$end_index,,drop=FALSE], segments),
+  annotated.segmented.counts <-
+    Reduce(rbind, mapply(function(segments, annotations1, annotations2)
+    cbind(annotations1[segments$start_index,,drop=FALSE],
+          annotations2[segments$end_index,,drop=FALSE],
+          segments),
     # Split the profile by chromosome and segment each chromosome separately,
     # guaranteeing that chromosome boundaries are segment boundaries
     tapply(inprof, annotations[[chrom.colname]], scquantum:::segment.summarize, lambda=lambda,
       # The functions to be used to transform the data, to segment it, to estimate
       # the segment means, and to estimate the standard error of the means
-      trans = function(x) {gat.result <- gat(x, iod=iod.est); ifelse(is.na(gat.result), 0, gat.result)},
+      trans = function(x)
+      {
+        gat.result <- gat(x, iod=iod.est);
+        ifelse(is.na(gat.result), 0, gat.result)
+      },
       seg = scquantum:::tf.dp, loc = median,
       se = function(x) sqrt(pi/2) * sqrt(iod.est * median(x) / length(x))
     ),
@@ -190,7 +198,9 @@ prof2invals <- function(
     # list, or a sarcastic comment about how the code was written
     SIMPLIFY=FALSE))
 
-  return(annotated.segmented.counts[,c("penalty", chrom.colname, bin.start.colname, bin.end.colname, "mean", "se", "length")])
+  return(annotated.segmented.counts[,c(
+    "penalty", chrom.colname, bin.start.colname, bin.end.colname, "mean", "se", "length"
+  )])
 }
 
 ### Empirical characteristic functions and maxima
