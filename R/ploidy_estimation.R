@@ -1,22 +1,5 @@
 ### Functions for processing raw profiles
 
-# A function for estimating the index of dispersion, which is used when
-# estimating standard errors for each segment mean. This is an old version,
-# which I'm keeping just to compare to the newer version, "timeseries.iod",
-# below.
-
-#' @export
-diffsum.tm.2 <- function(v)
-{
-  y <- v[-1]
-  x <- v[-length(v)]
-  vals <- (y-x)^2/(y+x+1)
-  q <- quantile(vals, probs=.95)
-  tm <- mean(vals[vals <= q])
-  mean.est <- 1.05*(.95*tm + .05 * q)
-  return(mean.est)
-}
-
 # Estimate the standard deviation of a normal distribution with L2E, assuming
 # the normal distribution has mean 0.
 
@@ -236,20 +219,4 @@ ecf.global.max <- function(y, sds, smin=1, smax = 8)
       peak_phase = NA
     ))
   }
-}
-
-# Local maximum of the weighted empirical characteristic function
-#dyn.load("ecf_local_max.dylib")
-ecf.local.max <- function(s, y, sds)
-{
-  stopifnot(length(y) == length(sds))
-  if (any(is.na(c(s,y,sds)) | is.nan(c(s,y,sds)) | is.infinite(c(s, y, sds))))
-  {
-    return(c(peak_location=NA, peak_height=NA, peak_phase=NA))
-  }
-  call.results <-
-     .C("ecf_local_max", s=as.double(s), nys=length(y), ys=as.double(y),
-     nsigmas=length(sds), sigmas=as.double(sds),
-     peak_location=double(1), peak_height=double(1), peak_phase=double(1))
-  return(unlist(call.results[c("peak_location", "peak_height", "peak_phase")]))
 }
