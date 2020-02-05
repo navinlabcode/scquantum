@@ -208,6 +208,7 @@ prof2invals <- function(
 #' @export
 weighted.ecf <- Vectorize(function(y, sds, s)
 {
+  stopifnot(length(y) == length(sds))
   variances <- 1 - exp(-4 * pi^2 * sds^2 * s^2)
   weights <- (1/variances) / sum(1/variances)
   sum(weights * exp(1i * (2*pi) * s * y))
@@ -217,6 +218,7 @@ weighted.ecf <- Vectorize(function(y, sds, s)
 #' @export
 ecf.global.max <- function(y, sds, smin=1, smax = 8)
 {
+  stopifnot(length(y) == length(sds))
   svals <- seq(smin, smax, by=0.01)
   polar.quantogram <- weighted.ecf(y, sds, svals)
   max.index <- which.max(Mod(polar.quantogram))
