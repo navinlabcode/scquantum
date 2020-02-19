@@ -1,9 +1,11 @@
+#' @import ggplot2
+#' @import patchwork
+
 ### Functions for processing raw profiles
 
 # Estimate the standard deviation of a normal distribution with L2E, assuming
 # the normal distribution has mean 0.
 
-#' @export
 l2e.normal.sd <- function(xs)
 {
   # Need at least two values to get a standard deviation
@@ -23,7 +25,6 @@ l2e.normal.sd <- function(xs)
 # A function for estimating the index of dispersion, which is used when
 # estimating standard errors for each segment mean
 
-#' @export
 timeseries.iod <- function(v)
 {
   # 3 elements, 2 differences, can find a standard deviation
@@ -50,7 +51,6 @@ timeseries.iod <- function(v)
 # A variance-stabilizing transform for data where the mean varies but the index
 # of dispersion stays the same. "gat" stands for "generalized Anscombe transform"
 
-#' @export
 gat <- function(x, iod)
 {
   # When index of dispersion is above 4, transformation will be imaginary for
@@ -73,12 +73,12 @@ tf.dp <- Vectorize(function(y, lam)
      lam=as.double(lam)[1], beta=numeric(n))$beta
 }, "lam")
 
-# Segment a profile, and summarize the segments. Output has columns lambda,
+# Segment a profile, and summarize the segments. Output has columns penalty,
 # mean, se, length, start_index, and end_index. Segmentation is performed for
-# each input penalty value ("lambda"), and each row int he output represents a
+# each input penalty value, and each row int he output represents a
 # segment, giving the estimated mean of the segment, the standard error of the
 # mean, and the number of elements which were in the segment.
-segment.summarize <- function(inprof, lambda, trans, seg, loc, se)
+segment.summarize <- function(inprof, penalty, trans, seg, loc, se)
 {
   # If the input penalties don't have names, name them. This is intended to make
   # grouping by penalty safe without worrying about flaoting point problems.
@@ -90,15 +90,15 @@ segment.summarize <- function(inprof, lambda, trans, seg, loc, se)
   # the same length of the original profile, but piecewise constant. Each
   # segmented profile, corresponding to a penalty value, will be a column of a
   # matrix.
-  nlambda <- length(lambda)
-  if (nlambda > 1)
+  npenalty <- length(penalty)
+  if (npenalty > 1)
   {
-    segmented.profiles <- seg(transformed.profile, lambda)
-  } else if (nlambda == 1)
-  # If lambda is of length 1, by default we will get an array, not a matrix, and
+    segmented.profiles <- seg(transformed.profile, penalty)
+  } else if (npenalty == 1)
+  # If penalty is of length 1, by default we will get an array, not a matrix, and
   # it needs to be converted to a matrix for downstream stuff to work
   {
-    segmented.profiles <- as.matrix(seg(transformed.profile, lambda), ncol=1)
+    segmented.profiles <- as.matrix(seg(transformed.profile, penalty), ncol=1)
   } else
   # What's the remaining case? Length is 0. Conceptually I could return a table
   # with no rows in that case, but the function is not really supposed to do
@@ -116,13 +116,13 @@ segment.summarize <- function(inprof, lambda, trans, seg, loc, se)
   # Summarize the segments, recording three numbers: estimate the mean of each
   # segment, the standard error of the mean, and record the length of the
   # segment.
-  means <- lapply(1:nlambda, function(i)
+  means <- lapply(1:npenalty, function(i)
     tapply(inprof, segnums[,i], loc)
   )
-  standard.errors <- lapply(1:nlambda, function(i)
+  standard.errors <- lapply(1:npenalty, function(i)
     tapply(inprof, segnums[,i], se)
   )
-  lengths <- lapply(1:nlambda, function(i)
+  lengths <- lapply(1:npenalty, function(i)
     tapply(inprof, segnums[,i], length)
   )
 
@@ -130,24 +130,29 @@ segment.summarize <- function(inprof, lambda, trans, seg, loc, se)
   end.indices <- lapply(lengths, cumsum)
   start.indices <- lapply(end.indices, function(x) c(0, x[-length(x)]) + 1)
 
-  Reduce(rbind, lapply(1:length(lambda), function(i)
-    data.frame(penalty = lambda[i], mean=means[[i]], se=standard.errors[[i]],
+  Reduce(rbind, lapply(1:length(penalty), function(i)
+    data.frame(penalty = penalty[i], mean=means[[i]], se=standard.errors[[i]],
                length=lengths[[i]], start_index = start.indices[[i]],
                end_index = end.indices[[i]])
   ))
 }
 
-#' @export
 prof2invals <- function(
   # The input required for segmentation: the profile to be segmented, and the
   # penalty values for the segmentation
-  inprof, lambda,
+  inprof, penalty,
   # The input required for annotation: the data frame containing the
   # annotations, and the names of the columns which are going to be used. This
   # also affects the segmentation, since chromosome boundaries are always
   # segment boundaries.
   annotations, chrom.colname, bin.start.colname, bin.end.colname)
 {
+
+  stopifnot(typeof(chrom.colname) == "character")
+  stopifnot(typeof(bin.start.colname) == "character")
+  stopifnot(typeof(bin.end.colname) == "character")
+  stopifnot("data.frame" %in% class(annotations))
+
   # Estimate the index of dispersion, which will be used for estimating standard
   # errors of segment means, and for transformation
   iod.est <- scquantum:::timeseries.iod(inprof)
@@ -185,7 +190,7 @@ prof2invals <- function(
     # Split the profile by chromosome and segment each chromosome separately,
     # guaranteeing that chromosome boundaries are segment boundaries
     tapply(inprof, annotations[[chrom.colname]], scquantum:::segment.summarize,
-           lambda=lambda,
+           penalty=penalty,
       # The functions to be used to transform the data, to segment it, to estimate
       # the segment means, and to estimate the standard error of the means
       trans = function(x)
@@ -213,7 +218,6 @@ prof2invals <- function(
 ### Empirical characteristic functions and maxima
 
 # Evaluate the weighted empirical characteristic function
-#' @export
 weighted.ecf <- Vectorize(function(y, sds, s)
 {
   stopifnot(length(y) == length(sds))
@@ -223,7 +227,6 @@ weighted.ecf <- Vectorize(function(y, sds, s)
 }, 's')
 
 # Global maximum of the weighted empirical characteristic function
-#' @export
 ecf.global.max <- function(y, sds, smin=1, smax = 8)
 {
   stopifnot(length(y) == length(sds))
@@ -245,4 +248,116 @@ ecf.global.max <- function(y, sds, smin=1, smax = 8)
       peak_phase = NA
     ))
   }
+}
+
+irises.pluspurple <-
+  c(`0`="#25292E", `1`="#9F3D0C", `2`="#CF601F", `3`="#E1DE96",
+    `4`="#89AD71", `5`="#89C9E0", `6`="#556bb7", `>=7`="#8b44bb")
+
+plot.scquantum_ploidy_inference <- function(ploidy.inference)
+{
+  # Segmented profile
+  mean.bincount <- mean(ploidy.inference$bincounts$bincount)
+  bincount2cn <- function(x)
+  {
+    with(ploidy.inference,
+         (x / mean.bincount) * multiply_ratios_by - subtract_from_scaled_ratios)
+  }
+  profile.plotelems <- if (length(ploidy.inference$penalty) == 1)
+  {
+    cn.string <- with(ploidy.inference, ifelse(
+      round(bincount2cn(bincounts$bincount)) >= 7,
+      ">=7",
+      as.character(round(bincount2cn(bincounts$bincount)))
+    ))
+    cn.factor <- factor(cn.string, levels=c(as.character(0:6), ">=7"))
+    bincounts.with.cn.estimates <- ploidy.inference$bincounts
+    bincounts.with.cn.estimates$cn <- cn.factor
+    segmentation.for.plot <- ploidy.inference$segmentation
+    segmentation.for.plot <- segmentation.for.plot[segmentation.for.plot$length >= 20,]
+    list(
+      geom_point(aes(x=pos, y=bincount, colour=cn),
+                 data=bincounts.with.cn.estimates,
+                 alpha=0.5, size=0),
+      geom_segment(aes(x=start, xend=end, y=mean, yend=mean),
+                   data=segmentation.for.plot),
+    scale_colour_manual(
+      values = irises.pluspurple,
+      guide=guide_legend(title="copy\nnumber", override.aes=list(alpha=1, size=2))),
+    scale_y_continuous(sec.axis = sec_axis(bincount2cn, name="copy number", breaks=0:10),
+                       limits=c(0, max(ploidy.inference$segmentation$mean[ploidy.inference$segmentation$length >= 20]) * 1.1))
+    )
+  } else
+  {
+    list(
+      geom_point(aes(x=pos, y=bincount),
+                 data=ploidy.inference$bincounts, alpha=0.1, size=0),
+      geom_segment(aes(x=start, xend=end, y=mean, yend=mean, colour=as.factor(penalty)),
+                   data=ploidy.inference$segmentation),
+      scale_colour_discrete(guide=guide_legend(title="penalty")),
+      ylim(0, max(ploidy.inference$segmentation$mean[ploidy.inference$segmentation$length >= 20]) * 1.1)
+    )
+  }
+  if (!is.null(ploidy.inference$segmentation$chrom))
+  {
+    profile.plotelems <- c(profile.plotelems,
+      facet_grid(cols=vars(factor(chrom, levels=stringr::str_sort(unique(chrom), numeric=TRUE))),
+                 space="free_x", scales="free_x"))
+  }
+  segmented.profile <- Reduce(`+`, c(list(ggplot(ploidy.inference$bincounts)), profile.plotelems)) +
+    cowplot::theme_cowplot() +
+    theme(panel.spacing.x=unit(0, "in"),
+          axis.text.x=element_blank(),
+          axis.ticks.x=element_blank(),
+          strip.text=element_text(angle=90, size=6)) +
+    xlab("position")
+
+  # Histogram or frequency polygon
+  binwidth.rule <- function(x)
+  {
+    default.sd <- mean.bincount / 100
+    est.sd <- quantum.sd(x, mean.bincount)
+    # Not the right length
+    return(3.5 * max(default.sd, est.sd) / (length(x)/5)^(1/3))
+  }
+  distribution.geom <-
+    if (length(ploidy.inference$penalty)==1)
+    {
+      geom_histogram(
+        aes(mean, stat(count)),
+        binwidth=3.5 * median(ploidy.inference$segmentation$se[ploidy.inference$segmentation$length >= 20]) /
+          (sum(ploidy.inference$segmentation$length >= 20)/ploidy.inference$ploidy)^(1/3)
+      )
+    } else
+    {
+      geom_freqpoly(
+        aes(mean, stat(count), colour=as.factor(penalty)),
+        binwidth=binwidth.rule
+      )
+    }
+  distribution <-
+    ggplot(ploidy.inference$segmentation[ploidy.inference$segmentation$length >= 20,]) +
+    cowplot::theme_cowplot() +
+    distribution.geom +
+    theme(legend.position='none') +
+    xlab("segment mean") + ylab("number of segments")
+
+  # Modular quantogram
+  quantogram.geom <- if (length(ploidy.inference$penalty) == 1)
+  {
+    geom_line(aes(x=1 / s * mean.bincount,
+                  y=Mod(polar_quantogram)))
+  } else
+  {
+    geom_line(aes(x=1 / s * mean.bincount,
+                  y=Mod(polar_quantogram), colour=as.factor(penalty)))
+  }
+  quantogram <- ggplot(ploidy.inference$polar_quantogram) +
+    cowplot::theme_cowplot() +
+    quantogram.geom +
+    theme(legend.position='none') +
+    xlab("reads per copy") +
+    scale_y_continuous(name="score", limits=c(0,1))
+
+  return(segmented.profile / (distribution | quantogram))
 }

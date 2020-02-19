@@ -1,0 +1,63 @@
+---
+title: "scquantum"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{scquantum}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+Placeholder.
+
+```{r setup}
+#library(scquantum)
+#library(readr)
+#tumor.bincount <- read_tsv("tumor_bincount.txt", col_types=cols(
+#  CHR = col_character(), 
+#  START = col_integer(),
+#  END = col_integer(),
+#  .default = col_double()
+#))
+```
+
+```{r}
+#example.call <- ploidy.inference(tumor.bincount$SRR053676, 
+#  tumor.bincount$CHR, tumor.bincount$START, tumor.bincount$END)
+#scquantum:::plot.scquantum_ploidy_inference(example.call)
+```
+
+```{r}
+#str(example.call)
+```
+
+
+```{r}
+#example.call.2 <- ploidy.inference(tumor.bincount$SRR054632, 
+#  tumor.bincount$CHR, tumor.bincount$START, tumor.bincount$END)
+#scquantum:::plot.scquantum_ploidy_inference(example.call.2)
+```
+
+```{r}
+#example.call.3 <- ploidy.inference(tumor.bincount$SRR054632, 
+#  tumor.bincount$CHR, tumor.bincount$START)
+#scquantum:::plot.scquantum_ploidy_inference(example.call.3)
+```
+
+```{r}
+#example.call.4 <- ploidy.inference(tumor.bincount$SRR054632, 
+#  tumor.bincount$CHR)
+#scquantum:::plot.scquantum_ploidy_inference(example.call.4)
+```
+
+```{r}
+#example.call.5 <- ploidy.inference(tumor.bincount$SRR054632)
+#scquantum:::plot.scquantum_ploidy_inference(example.call.5)
+```
+
