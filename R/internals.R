@@ -10,11 +10,11 @@ l2e.normal.sd <- function(xs)
 {
   # Need at least two values to get a standard deviation
   stopifnot(length(xs) >= 2)
-  optim.result <- optimize(
+  optim.result <- stats::optimize(
     # L2E loss function
     f=function(sd)
     # "Data part", the sample average of the likelihood
-    -2 * mean(dnorm(xs, sd=sd)) +
+    -2 * mean(stats::dnorm(xs, sd=sd)) +
     # "Theta part", the integral of the squared density
       1/(2*sqrt(pi)*sd),
     # Parameter: standard deviation of the normal distribution fit
@@ -198,8 +198,8 @@ prof2invals <- function(
         gat.result <- gat(x, iod=iod.est);
         ifelse(is.na(gat.result), 0, gat.result)
       },
-      seg = scquantum:::tf.dp, loc = median,
-      se = function(x) sqrt(pi/2) * sqrt(iod.est * median(x) / length(x))
+      seg = scquantum:::tf.dp, loc = stats::median,
+      se = function(x) sqrt(pi/2) * sqrt(iod.est * stats::median(x) / length(x))
     ),
     # Chromosome annotations and bin start annotations, split by chromosome
     split(left.annotations, annotations[[chrom.colname]]),
@@ -250,114 +250,17 @@ ecf.global.max <- function(y, sds, smin=1, smax = 8)
   }
 }
 
+quantum.sd <- function(x, mu)
+{
+  y <- x / mu
+  svals <- seq(1, 8, length.out=700)
+  polar.quantogram <- sapply(svals, function(s) mean(exp(1i * (2*pi) * s * y)))
+  peak.height <- Mod(polar.quantogram)[which.max(Mod(polar.quantogram))[1]]
+  peak.location <- svals[which.max(Mod(polar.quantogram))[1]]
+  ratio.variance <- (log(peak.height) / (-2 * pi^2)) * peak.location^2
+  ratio.variance * mu
+}
+
 irises.pluspurple <-
   c(`0`="#25292E", `1`="#9F3D0C", `2`="#CF601F", `3`="#E1DE96",
     `4`="#89AD71", `5`="#89C9E0", `6`="#556bb7", `>=7`="#8b44bb")
-
-plot.scquantum_ploidy_inference <- function(ploidy.inference)
-{
-  # Segmented profile
-  mean.bincount <- mean(ploidy.inference$bincounts$bincount)
-  bincount2cn <- function(x)
-  {
-    with(ploidy.inference,
-         (x / mean.bincount) * multiply_ratios_by - subtract_from_scaled_ratios)
-  }
-  profile.plotelems <- if (length(ploidy.inference$penalty) == 1)
-  {
-    cn.string <- with(ploidy.inference, ifelse(
-      round(bincount2cn(bincounts$bincount)) >= 7,
-      ">=7",
-      as.character(round(bincount2cn(bincounts$bincount)))
-    ))
-    cn.factor <- factor(cn.string, levels=c(as.character(0:6), ">=7"))
-    bincounts.with.cn.estimates <- ploidy.inference$bincounts
-    bincounts.with.cn.estimates$cn <- cn.factor
-    segmentation.for.plot <- ploidy.inference$segmentation
-    segmentation.for.plot <- segmentation.for.plot[segmentation.for.plot$length >= 20,]
-    list(
-      geom_point(aes(x=pos, y=bincount, colour=cn),
-                 data=bincounts.with.cn.estimates,
-                 alpha=0.5, size=0),
-      geom_segment(aes(x=start, xend=end, y=mean, yend=mean),
-                   data=segmentation.for.plot),
-    scale_colour_manual(
-      values = irises.pluspurple,
-      guide=guide_legend(title="copy\nnumber", override.aes=list(alpha=1, size=2))),
-    scale_y_continuous(sec.axis = sec_axis(bincount2cn, name="copy number", breaks=0:10),
-                       limits=c(0, max(ploidy.inference$segmentation$mean[ploidy.inference$segmentation$length >= 20]) * 1.1))
-    )
-  } else
-  {
-    list(
-      geom_point(aes(x=pos, y=bincount),
-                 data=ploidy.inference$bincounts, alpha=0.1, size=0),
-      geom_segment(aes(x=start, xend=end, y=mean, yend=mean, colour=as.factor(penalty)),
-                   data=ploidy.inference$segmentation),
-      scale_colour_discrete(guide=guide_legend(title="penalty")),
-      ylim(0, max(ploidy.inference$segmentation$mean[ploidy.inference$segmentation$length >= 20]) * 1.1)
-    )
-  }
-  if (!is.null(ploidy.inference$segmentation$chrom))
-  {
-    profile.plotelems <- c(profile.plotelems,
-      facet_grid(cols=vars(factor(chrom, levels=stringr::str_sort(unique(chrom), numeric=TRUE))),
-                 space="free_x", scales="free_x"))
-  }
-  segmented.profile <- Reduce(`+`, c(list(ggplot(ploidy.inference$bincounts)), profile.plotelems)) +
-    cowplot::theme_cowplot() +
-    theme(panel.spacing.x=unit(0, "in"),
-          axis.text.x=element_blank(),
-          axis.ticks.x=element_blank(),
-          strip.text=element_text(angle=90, size=6)) +
-    xlab("position")
-
-  # Histogram or frequency polygon
-  binwidth.rule <- function(x)
-  {
-    default.sd <- mean.bincount / 100
-    est.sd <- quantum.sd(x, mean.bincount)
-    # Not the right length
-    return(3.5 * max(default.sd, est.sd) / (length(x)/5)^(1/3))
-  }
-  distribution.geom <-
-    if (length(ploidy.inference$penalty)==1)
-    {
-      geom_histogram(
-        aes(mean, stat(count)),
-        binwidth=3.5 * median(ploidy.inference$segmentation$se[ploidy.inference$segmentation$length >= 20]) /
-          (sum(ploidy.inference$segmentation$length >= 20)/ploidy.inference$ploidy)^(1/3)
-      )
-    } else
-    {
-      geom_freqpoly(
-        aes(mean, stat(count), colour=as.factor(penalty)),
-        binwidth=binwidth.rule
-      )
-    }
-  distribution <-
-    ggplot(ploidy.inference$segmentation[ploidy.inference$segmentation$length >= 20,]) +
-    cowplot::theme_cowplot() +
-    distribution.geom +
-    theme(legend.position='none') +
-    xlab("segment mean") + ylab("number of segments")
-
-  # Modular quantogram
-  quantogram.geom <- if (length(ploidy.inference$penalty) == 1)
-  {
-    geom_line(aes(x=1 / s * mean.bincount,
-                  y=Mod(polar_quantogram)))
-  } else
-  {
-    geom_line(aes(x=1 / s * mean.bincount,
-                  y=Mod(polar_quantogram), colour=as.factor(penalty)))
-  }
-  quantogram <- ggplot(ploidy.inference$polar_quantogram) +
-    cowplot::theme_cowplot() +
-    quantogram.geom +
-    theme(legend.position='none') +
-    xlab("reads per copy") +
-    scale_y_continuous(name="score", limits=c(0,1))
-
-  return(segmented.profile / (distribution | quantogram))
-}

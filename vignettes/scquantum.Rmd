@@ -30,7 +30,7 @@ Placeholder.
 ```{r}
 #example.call <- ploidy.inference(tumor.bincount$SRR053676, 
 #  tumor.bincount$CHR, tumor.bincount$START, tumor.bincount$END)
-#scquantum:::plot.scquantum_ploidy_inference(example.call)
+#plot(example.call)
 ```
 
 ```{r}
@@ -41,23 +41,23 @@ Placeholder.
 ```{r}
 #example.call.2 <- ploidy.inference(tumor.bincount$SRR054632, 
 #  tumor.bincount$CHR, tumor.bincount$START, tumor.bincount$END)
-#scquantum:::plot.scquantum_ploidy_inference(example.call.2)
+#plot(example.call.2)
 ```
 
 ```{r}
 #example.call.3 <- ploidy.inference(tumor.bincount$SRR054632, 
 #  tumor.bincount$CHR, tumor.bincount$START)
-#scquantum:::plot.scquantum_ploidy_inference(example.call.3)
+#plot(example.call.3)
 ```
 
 ```{r}
 #example.call.4 <- ploidy.inference(tumor.bincount$SRR054632, 
 #  tumor.bincount$CHR)
-#scquantum:::plot.scquantum_ploidy_inference(example.call.4)
+#plot(example.call.4)
 ```
 
 ```{r}
 #example.call.5 <- ploidy.inference(tumor.bincount$SRR054632)
-#scquantum:::plot.scquantum_ploidy_inference(example.call.5)
+#plot(example.call.5)
 ```
 
