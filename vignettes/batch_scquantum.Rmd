@@ -19,6 +19,8 @@ knitr::opts_chunk$set(
 ```{r setup}
 library(scquantum)
 library(future)
+library(purrr)
+library(furrr)
 ```
 
 `scQuantum` provides batch analysis of single cell objects with `scquantum::batch_scquantum()`.
