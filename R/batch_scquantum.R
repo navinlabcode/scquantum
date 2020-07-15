@@ -1,11 +1,11 @@
 #' Batch execution of scQuantum single-cell ploidy calculation
 #'
 #' This function runs scQuantum ploidy inference in batches of cells. Allows parallel usage with the help of \code{future}.
-#' @param df A data frame containing bincounts from DNA sequenced single-cells
-#' @param chrom A vector containing chromosome information for the bincounts
-#' @param start A vector containing start position information for the bincounts
-#' @param end A vector containing end position information for the bincounts
-#' @param penalty Numeric passed on to \link{\code{scquantum::ploidy.inference}}
+#' @param df A data frame containing bincounts from DNA sequenced single-cells.
+#' @param chrom A vector containing chromosome information for the bincounts.
+#' @param start A vector containing start position information for the bincounts.
+#' @param end A vector containing end position information for the bincounts.
+#' @param penalty Numeric passed on to \link{\code{scquantum::ploidy.inference}}. Defaults to scquantum default value of 25.
 #' @import purrr
 #' @importFrom furrr future_map
 #' @examples
@@ -23,7 +23,7 @@ batch_scquantum <- function(df,
                     chrom,
                     start,
                     end,
-                    penalty = 25)
+                    penalty = penalty)
 
 }
 
@@ -61,10 +61,7 @@ batch_ploidy <- function(scquantum_list) {
 #' This function runs scQuantum confidence of the ploidy inference in batches of cells. Allows parallel usage with the help of \code{future}.
 #' @param scquantum_list A list object containing the results from batch ploidy
 #' @import purrr
-#' @importFrom purrr pluck
-#' @importFrom dplyr bind_rows
-#' @importFrom magrittr `%>%`
-#' @importFrom dplyr rename
+
 #' @examples
 #'
 #'
