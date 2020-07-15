@@ -77,6 +77,6 @@ batch_confidence <- function(scquantum_list) {
     as.data.frame() %>%
     dplyr::rename(peak_height = "V1")
 
-  return(ploidies_df)
+  return(confidence_df)
 
 }
