@@ -1,0 +1,47 @@
+---
+title: "Batch scQuantum"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{batch_scquantum}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+source("../R/batch_scquantum.R")
+library(magrittr)
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+```{r setup}
+library(scquantum)
+library(future)
+```
+
+`scQuantum` provides batch analysis of single cell objects with `scquantum::batch_scquantum()`.
+This example dataset contains 97 cells from a breast cancer cell line MDA-MB-231.
+```{r}
+load("../data/bincounts.rda")
+```
+
+For parallel, `scQuantum` adopts the use of future, future allows you to plan your session if you want to add parallelization, for more information please check [future vignette](https://cran.r-project.org/web/packages/future/vignettes/future-1-overview.html).
+```{r}
+plan("multisession",
+     workers = 10)
+```
+
+Now we just run our batch over scquantum. The batch process will return a list from `scquantum::ploidy.inference` calls for each cell.
+The first 3 columns are being excluded since they contain chromosomal information about the bincounts.
+```{r}
+mda_batch <- batch_scquantum(bincounts[,-c(1:3)])
+```
+
+For easier access, `scquantum` batch analysis provides accessor functions to the ploidy and confidence calls with `scquantum::batch_ploidy()` and `scquantum::batch_confidence()`. Those will return a data frame containing the values for each cell.
+```{r}
+mda_ploidies <- batch_ploidy(mda_batch)
+knitr::kable(head(mda_ploidies))
+```
+
