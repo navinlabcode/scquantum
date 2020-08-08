@@ -193,12 +193,11 @@ prof2invals <- function(
            penalty=penalty,
       # The functions to be used to transform the data, to segment it, to estimate
       # the segment means, and to estimate the standard error of the means
-#      trans = function(x)
-#      {
-#        gat.result <- gat(x, iod=iod.est);
-#        ifelse(is.na(gat.result), 0, gat.result)
-#      },
-      trans = sqrt,
+      trans = function(x)
+      {
+        gat.result <- gat(x, iod=iod.est);
+        ifelse(is.na(gat.result), 0, gat.result)
+      },
       seg = scquantum:::tf.dp, loc = stats::median,
       se = function(x) sqrt(pi/2) * sqrt(iod.est * stats::median(x) / length(x))
     ),
