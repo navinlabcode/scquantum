@@ -222,8 +222,12 @@ prof2invals <- function(
 weighted.ecf <- Vectorize(function(y, sds, s)
 {
   stopifnot(length(y) == length(sds))
+  y <- y[sds > 0.00001]
+  sds <- sds[sds > 0.00001]
+  means <- exp(-2 * pi^2 * sds^2 * s^2)
   variances <- 1 - exp(-4 * pi^2 * sds^2 * s^2)
-  weights <- (1/variances) / sum(1/variances)
+  unnormalized.weights <- means / variances
+  weights <- unnormalized.weights / sum(unnormalized.weights)
   sum(weights * exp(1i * (2*pi) * s * y))
 }, 's')
 
