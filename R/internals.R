@@ -199,8 +199,11 @@ prof2invals <- function(
 #        ifelse(is.na(gat.result), 0, gat.result)
 #      },
       trans = sqrt,
-      seg = scquantum:::tf.dp, loc = stats::median,
-      se = function(x) sqrt(pi/2) * sqrt(iod.est * stats::median(x) / length(x))
+#      seg = scquantum:::tf.dp, loc = stats::median,
+      seg = scquantum:::tf.dp, loc = mean,
+      # Get rid of factor for the median since I'm using the mean
+#      se = function(x) sqrt(pi/2) * sqrt(iod.est * stats::median(x) / length(x))
+      se = function(x) sqrt(iod.est * mean(x) / length(x))
     ),
     # Chromosome annotations and bin start annotations, split by chromosome
     split(left.annotations, annotations[[chrom.colname]]),
