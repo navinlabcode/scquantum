@@ -1,5 +1,6 @@
 #' @export
-ploidy.inference <- function(x, chrom=NULL, start=NULL, end=NULL, penalty=25)
+ploidy.inference <- function(x, chrom = NULL, start = NULL, end = NULL, penalty = 25,
+  do_segmentation = TRUE, seg_length = NULL, iod = NULL)
 {
   # Make sure the penalties can be safely converted to a factor for splitting
   # purposes
@@ -39,8 +40,21 @@ ploidy.inference <- function(x, chrom=NULL, start=NULL, end=NULL, penalty=25)
   {
     bincounts$pos <- 1:length(x)
   }
-  segments <-
-    scquantum:::prof2invals(x, penalty, annotations, "chrom", "start", "end")
+  if (do_segmentation)
+  {
+    segments <-
+      scquantum:::prof2invals(x, penalty, annotations, "chrom", "start", "end")
+  } else
+  {
+    seg_mean <- x
+    stopifnot(!is.null(iod))
+    stopifnot(!is.null(seg_length) | (!is.null(start) & !is.null(end)))
+    if (is.null(seg_length))
+    {
+      seg_length <- start - end + 1
+    }
+    segments <- scquantum:::seg2invals(seg_mean, seg_length, iod, annotations)
+  }
   if (is.null(chrom)) segments$chrom <- NULL
   filtered.segments <- segments[segments$length >= 20,]
   filtered.ratio.segments <- filtered.segments
@@ -191,4 +205,31 @@ plot.scquantum_ploidy_inference <- function(ploidy.inference)
     scale_y_continuous(name="score", limits=c(0,1))
 
   return(segmented.profile / (distribution | quantogram))
+}
+
+# A function for estimating the index of dispersion, which is used when
+# estimating standard errors for each segment mean
+
+#' @export
+timeseries.iod <- function(v)
+{
+  # 3 elements, 2 differences, can find a standard deviation
+  stopifnot(length(v) >= 3)
+  # Differences between pairs of values
+  y <- v[-1]
+  x <- v[-length(v)]
+  # Normalize the differences using the sum. The result should be around zero,
+  # plus or minus square root of the index of dispersion
+  vals.unfiltered <- (y-x)/sqrt(y+x)
+  # Remove divide by zero cases, and--considering this is supposed to be count
+  # data--divide by almost-zero cases
+  vals <- vals.unfiltered[y + x  >= 1]
+  # Check that there's anything left
+  stopifnot(length(vals) >= 2)
+  # Assuming most of the normalized differences follow a normal distribution,
+  # estimate the standard deviation
+  val.sd <- l2e.normal.sd(vals)
+  # Square this standard deviation to obtain an estimate of the index of
+  # dispersion
+  return(val.sd^2)
 }
