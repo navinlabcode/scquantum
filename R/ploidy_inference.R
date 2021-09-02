@@ -6,6 +6,7 @@ ploidy.inference <- function(x, chrom=NULL, start=NULL, end=NULL, penalty=25)
   stopifnot(!any(duplicated(as.character(penalty))))
   stopifnot(is.numeric(x))
   stopifnot(is.numeric(penalty))
+  stopifnot(length(penalty) == 1)
   if (!is.null(chrom))
   {
     annotations <- data.frame(chrom=chrom)
@@ -45,31 +46,14 @@ ploidy.inference <- function(x, chrom=NULL, start=NULL, end=NULL, penalty=25)
   filtered.ratio.segments <- filtered.segments
   filtered.ratio.segments$mean <- filtered.ratio.segments$mean / mean(x)
   filtered.ratio.segments$se <- filtered.ratio.segments$se / mean(x)
-  polar.quantogram <- Reduce(
-    rbind,
-    mapply(function(seg, l)
-    {
-      # Make sure that the order of the penalty isn't getting switched
-      stopifnot(seg$penalty[1] == l)
-      data.frame(
-        penalty=l,
+  polar.quantogram <- data.frame(
+        penalty=penalty,
         s = seq(1, 8, length.out=100),
         polar_quantogram = scquantum:::weighted.ecf(
-        seg$mean, seg$se,
+        filtered.ratio.segments$mean, filtered.ratio.segments$se,
         seq(1, 8, length.out=100))
       )
-    },
-    # Split while guaranteeing that the order stays the same
-    split(filtered.ratio.segments,
-          factor(as.character(filtered.ratio.segments$penalty),
-                 levels=as.character(penalty))),
-    penalty,
-    SIMPLIFY=FALSE)
-  )
-  optimization.results <- Reduce(
-    rbind,
-    mapply(function(polar.quantogram, penalty)
-    {
+  optimization.results <- {
       max.index <- which.max(Mod(polar.quantogram$polar_quantogram))
       if (length(max.index) == 1) {
           peak.location <- polar.quantogram$s[max.index]
@@ -81,15 +65,10 @@ ploidy.inference <- function(x, chrom=NULL, start=NULL, end=NULL, penalty=25)
           peak.height <- NA
           peak.phase <- NA
       }
-      return(data.frame(peak_location=peak.location,
-                        peak_height=peak.height,
-                        peak_phase=peak.phase))
-    },
-    split(polar.quantogram,
-          factor(as.character(polar.quantogram$penalty), levels=as.character(penalty))),
-    penalty,
-    SIMPLIFY=FALSE)
-  )
+      data.frame(peak_location=peak.location,
+                 peak_height=peak.height,
+                 peak_phase=peak.phase)
+    }
   # Construct the output list
   output <- with(optimization.results,
     list(penalty = penalty,
@@ -102,11 +81,6 @@ ploidy.inference <- function(x, chrom=NULL, start=NULL, end=NULL, penalty=25)
          bincounts = bincounts)
   )
   class(output) <- c("scquantum_ploidy_inference", class(output))
-  names(output$penalty) <- sprintf("penalty=%s", as.character(penalty))
-  names(output$multiply_ratios_by) <- sprintf("penalty=%s", as.character(penalty))
-  names(output$subtract_from_scaled_ratios) <- sprintf("penalty=%s", as.character(penalty))
-  names(output$ploidy) <- sprintf("penalty=%s", as.character(penalty))
-  names(output$peak_height) <- sprintf("penalty=%s", as.character(penalty))
   return(output)
 }
 

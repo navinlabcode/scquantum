@@ -74,10 +74,9 @@ tf.dp <- Vectorize(function(y, lam)
 }, "lam")
 
 # Segment a profile, and summarize the segments. Output has columns penalty,
-# mean, se, length, start_index, and end_index. Segmentation is performed for
-# each input penalty value, and each row int he output represents a
-# segment, giving the estimated mean of the segment, the standard error of the
-# mean, and the number of elements which were in the segment.
+# mean, se, length, start_index, and end_index. Each row in the output
+# represents a segment, giving the estimated mean of the segment, the standard
+# error of the mean, and the number of elements which were in the segment.
 segment.summarize <- function(inprof, penalty, trans, seg, loc, se)
 {
   # If the input penalties don't have names, name them. This is intended to make
@@ -85,61 +84,33 @@ segment.summarize <- function(inprof, penalty, trans, seg, loc, se)
   # Transform to try and get data which are normally distributed around a
   # segment-specific mean, with the same variance for each segment
   transformed.profile <- trans(inprof)
+  stopifnot(all(!is.nan(transformed.profile)) & all(!is.na(transformed.profile)))
 
-  # For each penalty value, get a segmented profile in long format--that is, of
-  # the same length of the original profile, but piecewise constant. Each
-  # segmented profile, corresponding to a penalty value, will be a column of a
-  # matrix.
-  npenalty <- length(penalty)
-  if (npenalty > 1)
-  {
-    segmented.profiles <- seg(transformed.profile, penalty)
-  } else if (npenalty == 1)
-  # If penalty is of length 1, by default we will get an array, not a matrix, and
-  # it needs to be converted to a matrix for downstream stuff to work
-  {
-    segmented.profiles <- as.matrix(seg(transformed.profile, penalty), ncol=1)
-  } else
-  # What's the remaining case? Length is 0. Conceptually I could return a table
-  # with no rows in that case, but the function is not really supposed to do
-  # nothing and not segment anything, so I'll make that an error case
-  {
-    stop("No penalty values given")
-  }
+  segmented.profile <- seg(transformed.profile, penalty)
 
   # For each penalty value, number elements of the profile according to what
   # segment they're in
-  segnums <- apply(segmented.profiles, 2, function(segmented.profile)
-    cumsum(c(TRUE, abs(diff(segmented.profile)) > 0.1))
-  )
+  segnums <- cumsum(c(TRUE, abs(diff(segmented.profile)) > 0.1))
 
   # Summarize the segments, recording three numbers: estimate the mean of each
   # segment, the standard error of the mean, and record the length of the
   # segment.
-  means <- lapply(1:npenalty, function(i)
-    tapply(inprof, segnums[,i], loc)
-  )
-  standard.errors <- lapply(1:npenalty, function(i)
-    tapply(inprof, segnums[,i], se)
-  )
-  lengths <- lapply(1:npenalty, function(i)
-    tapply(inprof, segnums[,i], length)
-  )
+  means <- tapply(segmented.profile, segnums, loc)
+  standard.errors <- tapply(segmented.profile, segnums, se)
+  lengths <- tapply(segmented.profile, segnums, length)
 
   # From the lengths, get the start and end indices
-  end.indices <- lapply(lengths, cumsum)
-  start.indices <- lapply(end.indices, function(x) c(0, x[-length(x)]) + 1)
+  end.indices <- cumsum(lengths)
+  start.indices <- c(0, end.indices[-length(end.indices)]) + 1
 
-  Reduce(rbind, lapply(1:length(penalty), function(i)
-    data.frame(penalty = penalty[i], mean=means[[i]], se=standard.errors[[i]],
-               length=lengths[[i]], start_index = start.indices[[i]],
-               end_index = end.indices[[i]])
-  ))
+  data.frame(mean=means, se=standard.errors,
+             length=lengths, start_index = start.indices,
+             end_index = end.indices)
 }
 
 prof2invals <- function(
   # The input required for segmentation: the profile to be segmented, and the
-  # penalty values for the segmentation
+  # penalty value for the segmentation
   inprof, penalty,
   # The input required for annotation: the data frame containing the
   # annotations, and the names of the columns which are going to be used. This
@@ -198,7 +169,7 @@ prof2invals <- function(
 #        gat.result <- gat(x, iod=iod.est);
 #        ifelse(is.na(gat.result), 0, gat.result)
 #      },
-      trans = sqrt,
+      trans = function(x) {stopifnot(all(x >= 0)); sqrt(x)},
 #      seg = scquantum:::tf.dp, loc = stats::median,
       seg = scquantum:::tf.dp, loc = mean,
       # Get rid of factor for the median since I'm using the mean
@@ -214,7 +185,7 @@ prof2invals <- function(
     SIMPLIFY=FALSE))
 
   return(annotated.segmented.counts[,c(
-    "penalty", colnames(left.annotations), colnames(right.annotations),
+    colnames(left.annotations), colnames(right.annotations),
     "mean", "se", "length"
   )])
 }
