@@ -58,10 +58,12 @@ ploidy.inference <- function(x, chrom = NULL, start = NULL, end = NULL, penalty 
   if (is.null(chrom)) segments$chrom <- NULL
   filtered.segments <- segments[segments$length >= 20,]
   filtered.ratio.segments <- filtered.segments
-  filtered.ratio.segments$mean <- filtered.ratio.segments$mean / mean(x)
-  filtered.ratio.segments$se <- filtered.ratio.segments$se / mean(x)
+  mu.est <- mean(x)
+  filtered.ratio.segments$mean <- filtered.ratio.segments$mean / mu.est
+  filtered.ratio.segments$se <- filtered.ratio.segments$se / mu.est
+  svals <- seq(1, 8, length.out=100)
   polar.quantogram <- data.frame(
-        s = seq(1, 8, length.out=100),
+        s = svals,
         polar_quantogram = scquantum:::weighted.ecf(
         filtered.ratio.segments$mean, filtered.ratio.segments$se,
         seq(1, 8, length.out=100))
@@ -82,6 +84,18 @@ ploidy.inference <- function(x, chrom = NULL, start = NULL, end = NULL, penalty 
                  peak_height=peak.height,
                  peak_phase=peak.phase)
     }
+  cn.est <- round(filtered.ratio.segments$mean * optimization.results$peak_location - optimization.results$peak_phase / (2*pi))
+  theoretical.quantogram <- data.frame(s = svals,
+    theoretical_quantogram = scquantum:::expected.peak.heights(
+      cn.est,
+      filtered.ratio.segments$se,
+      optimization.results$peak_location,
+      svals))
+  theoretical.peak.height <- scquantum:::expected.peak.heights(
+      cn.est,
+      filtered.ratio.segments$se,
+      optimization.results$peak_location,
+      optimization.results$peak_location)
   # Construct the output list
   output <- with(optimization.results,
     list(penalty = penalty,
@@ -91,7 +105,9 @@ ploidy.inference <- function(x, chrom = NULL, start = NULL, end = NULL, penalty 
          peak_height = peak_height,
          segmentation = segments,
          polar_quantogram = polar.quantogram,
-         bincounts = bincounts)
+         bincounts = bincounts,
+         theoretical_quantogram = theoretical.quantogram,
+         theoretical_peak_height = theoretical.peak.height)
   )
   class(output) <- c("scquantum_ploidy_inference", class(output))
   return(output)

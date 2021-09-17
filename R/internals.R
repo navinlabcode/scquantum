@@ -213,6 +213,44 @@ ecf.global.max <- function(y, sds, smin=1, smax = 8)
   }
 }
 
+# Takes in copy numbers, ratio standard errors, the scaling factor, and input
+# values to the characteristic function. Outputs absolute value of the
+# characteristic function
+expected.peak.heights <- function(cn, ratio.se, scale, svals)
+{
+  nonzero.cn <- cn[cn > 0]
+  nonzero.se <- (ratio.se * scale)[cn > 0]
+
+  # Produce matrices, where each row is an s value, and each column is a segment
+  # Characteristic function of the noise
+  noise.cf <- t(sapply(svals, function(s)
+    exp(-(1/2) * nonzero.se^2 * (2 * pi * s)^2)
+  ))
+  # Characteristic function of the copy number. I'm considering the copy number
+  # to be a constant, but it still has a characteristic function, although a
+  # trivial one
+  # I'm leaving out the offset for now because I'm just calculating the modulus,
+  # which is not affected by it; but I should put it in just so the definitions
+  # don't look wrong
+  cn.cf <- t(sapply(svals, function(s)
+    exp(1i * (nonzero.cn / scale) * (2 * pi * s))
+  ))
+  # E[X] = Psi(2 pi s)
+  expected.values <- cn.cf * noise.cf
+  mean.norms <- noise.cf
+  # Var(X) = 1 - | Psi(2 pi s) |^2
+  variances <- 1 - mean.norms^2
+  unnormalized.weights <- mean.norms / variances
+  partition.function <- apply(unnormalized.weights, 1, sum)
+  weights <- unnormalized.weights / partition.function
+  weights[apply(weights, 1, function(x) any(is.nan(x)))] <- NA
+  this.theoretical.quantogram <-
+    apply(weights * expected.values, 1, sum)
+  background <- apply(weights^2 * variances, 1, sum)
+  expected.peak.height.function <- sqrt(Mod(this.theoretical.quantogram)^2 + background)
+  return(expected.peak.height.function)
+}
+
 quantum.sd <- function(x, mu)
 {
   y <- x / mu
