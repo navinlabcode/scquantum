@@ -1,6 +1,6 @@
 #' @export
 ploidy.inference <- function(x, chrom = NULL, start = NULL, end = NULL, penalty = 25,
-  do_segmentation = TRUE, seg_length = NULL, iod = NULL)
+  do_segmentation = TRUE, seg_length = NULL, iod = NULL, mean_bincount = NULL)
 {
   # Make sure the penalties can be safely converted to a factor for splitting
   # purposes
@@ -42,10 +42,12 @@ ploidy.inference <- function(x, chrom = NULL, start = NULL, end = NULL, penalty 
   }
   if (do_segmentation)
   {
+    mu.est <- mean(x)
     segments <-
       scquantum:::prof2invals(x, penalty, annotations, "chrom", "start", "end")
   } else
   {
+    mu.est <- mean_bincount
     seg_mean <- x
     stopifnot(!is.null(iod))
     stopifnot(!is.null(seg_length) | (!is.null(start) & !is.null(end)))
@@ -58,7 +60,6 @@ ploidy.inference <- function(x, chrom = NULL, start = NULL, end = NULL, penalty 
   if (is.null(chrom)) segments$chrom <- NULL
   filtered.segments <- segments[segments$length >= 20,]
   filtered.ratio.segments <- filtered.segments
-  mu.est <- mean(x)
   filtered.ratio.segments$mean <- filtered.ratio.segments$mean / mu.est
   filtered.ratio.segments$se <- filtered.ratio.segments$se / mu.est
   svals <- seq(1, 8, length.out=100)
