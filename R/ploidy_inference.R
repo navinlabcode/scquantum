@@ -51,7 +51,7 @@ ploidy.inference <- function(x, chrom = NULL, start = NULL, end = NULL, penalty 
     stopifnot(!is.null(seg_length) | (!is.null(start) & !is.null(end)))
     if (is.null(seg_length))
     {
-      seg_length <- start - end + 1
+      seg_length <- end - start + 1
     }
     segments <- scquantum:::seg2invals(seg_mean, seg_length, iod, annotations)
   }
