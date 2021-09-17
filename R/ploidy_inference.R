@@ -61,7 +61,6 @@ ploidy.inference <- function(x, chrom = NULL, start = NULL, end = NULL, penalty 
   filtered.ratio.segments$mean <- filtered.ratio.segments$mean / mean(x)
   filtered.ratio.segments$se <- filtered.ratio.segments$se / mean(x)
   polar.quantogram <- data.frame(
-        penalty=penalty,
         s = seq(1, 8, length.out=100),
         polar_quantogram = scquantum:::weighted.ecf(
         filtered.ratio.segments$mean, filtered.ratio.segments$se,
