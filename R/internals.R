@@ -69,10 +69,12 @@ segment.summarize <- function(inprof, penalty, trans, seg, loc, se)
 
   # Summarize the segments, recording three numbers: estimate the mean of each
   # segment, the standard error of the mean, and record the length of the
-  # segment.
-  means <- tapply(segmented.profile, segnums, loc)
-  standard.errors <- tapply(segmented.profile, segnums, se)
-  lengths <- tapply(segmented.profile, segnums, length)
+  # segment. Values are not transformed, since they are obtained from the
+  # original profile, using only the segment numbering derived from the
+  # segmented transformed profile.
+  means <- tapply(inprof, segnums, loc)
+  standard.errors <- tapply(inprof, segnums, se)
+  lengths <- tapply(inprof, segnums, length)
 
   # From the lengths, get the start and end indices
   end.indices <- cumsum(lengths)
