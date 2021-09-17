@@ -107,7 +107,8 @@ ploidy.inference <- function(x, chrom = NULL, start = NULL, end = NULL, penalty 
          polar_quantogram = polar.quantogram,
          bincounts = bincounts,
          theoretical_quantogram = theoretical.quantogram,
-         theoretical_peak_height = theoretical.peak.height)
+         theoretical_peak_height = theoretical.peak.height,
+         confidence_ratio = peak_height / theoretical.peak.height)
   )
   class(output) <- c("scquantum_ploidy_inference", class(output))
   return(output)
