@@ -1,11 +1,13 @@
 #' @export
-ploidy.inference <- function(x, chrom=NULL, start=NULL, end=NULL, penalty=25)
+ploidy.inference <- function(x, chrom = NULL, start = NULL, end = NULL, penalty = 25,
+  do_segmentation = TRUE, seg_length = NULL, iod = NULL, mean_bincount = NULL)
 {
   # Make sure the penalties can be safely converted to a factor for splitting
   # purposes
   stopifnot(!any(duplicated(as.character(penalty))))
   stopifnot(is.numeric(x))
   stopifnot(is.numeric(penalty))
+  stopifnot(length(penalty) == 1)
   if (!is.null(chrom))
   {
     annotations <- data.frame(chrom=chrom)
@@ -38,38 +40,36 @@ ploidy.inference <- function(x, chrom=NULL, start=NULL, end=NULL, penalty=25)
   {
     bincounts$pos <- 1:length(x)
   }
-  segments <-
-    scquantum:::prof2invals(x, penalty, annotations, "chrom", "start", "end")
+  if (do_segmentation)
+  {
+    mu.est <- mean(x)
+    segments <-
+      scquantum:::prof2invals(x, penalty, annotations, "chrom", "start", "end")
+  } else
+  {
+    mu.est <- mean_bincount
+    seg_mean <- x
+    stopifnot(!is.null(iod))
+    stopifnot(!is.null(seg_length) | (!is.null(start) & !is.null(end)))
+    if (is.null(seg_length))
+    {
+      seg_length <- end - start + 1
+    }
+    segments <- scquantum:::seg2invals(seg_mean, seg_length, iod, annotations)
+  }
   if (is.null(chrom)) segments$chrom <- NULL
   filtered.segments <- segments[segments$length >= 20,]
   filtered.ratio.segments <- filtered.segments
-  filtered.ratio.segments$mean <- filtered.ratio.segments$mean / mean(x)
-  filtered.ratio.segments$se <- filtered.ratio.segments$se / mean(x)
-  polar.quantogram <- Reduce(
-    rbind,
-    mapply(function(seg, l)
-    {
-      # Make sure that the order of the penalty isn't getting switched
-      stopifnot(seg$penalty[1] == l)
-      data.frame(
-        penalty=l,
-        s = seq(1, 8, length.out=100),
+  filtered.ratio.segments$mean <- filtered.ratio.segments$mean / mu.est
+  filtered.ratio.segments$se <- filtered.ratio.segments$se / mu.est
+  svals <- seq(1, 8, length.out=100)
+  polar.quantogram <- data.frame(
+        s = svals,
         polar_quantogram = scquantum:::weighted.ecf(
-        seg$mean, seg$se,
+        filtered.ratio.segments$mean, filtered.ratio.segments$se,
         seq(1, 8, length.out=100))
       )
-    },
-    # Split while guaranteeing that the order stays the same
-    split(filtered.ratio.segments,
-          factor(as.character(filtered.ratio.segments$penalty),
-                 levels=as.character(penalty))),
-    penalty,
-    SIMPLIFY=FALSE)
-  )
-  optimization.results <- Reduce(
-    rbind,
-    mapply(function(polar.quantogram, penalty)
-    {
+  optimization.results <- {
       max.index <- which.max(Mod(polar.quantogram$polar_quantogram))
       if (length(max.index) == 1) {
           peak.location <- polar.quantogram$s[max.index]
@@ -81,15 +81,22 @@ ploidy.inference <- function(x, chrom=NULL, start=NULL, end=NULL, penalty=25)
           peak.height <- NA
           peak.phase <- NA
       }
-      return(data.frame(peak_location=peak.location,
-                        peak_height=peak.height,
-                        peak_phase=peak.phase))
-    },
-    split(polar.quantogram,
-          factor(as.character(polar.quantogram$penalty), levels=as.character(penalty))),
-    penalty,
-    SIMPLIFY=FALSE)
-  )
+      data.frame(peak_location=peak.location,
+                 peak_height=peak.height,
+                 peak_phase=peak.phase)
+    }
+  cn.est <- round(filtered.ratio.segments$mean * optimization.results$peak_location - optimization.results$peak_phase / (2*pi))
+  theoretical.quantogram <- data.frame(s = svals,
+    theoretical_quantogram = scquantum:::expected.peak.heights(
+      cn.est,
+      filtered.ratio.segments$se,
+      optimization.results$peak_location,
+      svals))
+  theoretical.peak.height <- scquantum:::expected.peak.heights(
+      cn.est,
+      filtered.ratio.segments$se,
+      optimization.results$peak_location,
+      optimization.results$peak_location)
   # Construct the output list
   output <- with(optimization.results,
     list(penalty = penalty,
@@ -99,14 +106,12 @@ ploidy.inference <- function(x, chrom=NULL, start=NULL, end=NULL, penalty=25)
          peak_height = peak_height,
          segmentation = segments,
          polar_quantogram = polar.quantogram,
-         bincounts = bincounts)
+         bincounts = bincounts,
+         theoretical_quantogram = theoretical.quantogram,
+         theoretical_peak_height = theoretical.peak.height,
+         confidence_ratio = peak_height / theoretical.peak.height)
   )
   class(output) <- c("scquantum_ploidy_inference", class(output))
-  names(output$penalty) <- sprintf("penalty=%s", as.character(penalty))
-  names(output$multiply_ratios_by) <- sprintf("penalty=%s", as.character(penalty))
-  names(output$subtract_from_scaled_ratios) <- sprintf("penalty=%s", as.character(penalty))
-  names(output$ploidy) <- sprintf("penalty=%s", as.character(penalty))
-  names(output$peak_height) <- sprintf("penalty=%s", as.character(penalty))
   return(output)
 }
 
@@ -217,4 +222,31 @@ plot.scquantum_ploidy_inference <- function(ploidy.inference)
     scale_y_continuous(name="score", limits=c(0,1))
 
   return(segmented.profile / (distribution | quantogram))
+}
+
+# A function for estimating the index of dispersion, which is used when
+# estimating standard errors for each segment mean
+
+#' @export
+timeseries.iod <- function(v)
+{
+  # 3 elements, 2 differences, can find a standard deviation
+  stopifnot(length(v) >= 3)
+  # Differences between pairs of values
+  y <- v[-1]
+  x <- v[-length(v)]
+  # Normalize the differences using the sum. The result should be around zero,
+  # plus or minus square root of the index of dispersion
+  vals.unfiltered <- (y-x)/sqrt(y+x)
+  # Remove divide by zero cases, and--considering this is supposed to be count
+  # data--divide by almost-zero cases
+  vals <- vals.unfiltered[y + x  >= 1]
+  # Check that there's anything left
+  stopifnot(length(vals) >= 2)
+  # Assuming most of the normalized differences follow a normal distribution,
+  # estimate the standard deviation
+  val.sd <- l2e.normal.sd(vals)
+  # Square this standard deviation to obtain an estimate of the index of
+  # dispersion
+  return(val.sd^2)
 }

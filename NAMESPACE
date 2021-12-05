@@ -2,6 +2,7 @@
 
 S3method(plot,scquantum_ploidy_inference)
 export(ploidy.inference)
+export(timeseries.iod)
 import(ggplot2)
 import(patchwork)
 useDynLib(scquantum,tf_dp_wrapper)

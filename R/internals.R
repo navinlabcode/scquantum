@@ -22,31 +22,6 @@ l2e.normal.sd <- function(xs)
   return(optim.result$minimum)
 }
 
-# A function for estimating the index of dispersion, which is used when
-# estimating standard errors for each segment mean
-
-timeseries.iod <- function(v)
-{
-  # 3 elements, 2 differences, can find a standard deviation
-  stopifnot(length(v) >= 3)
-  # Differences between pairs of values
-  y <- v[-1]
-  x <- v[-length(v)]
-  # Normalize the differences using the sum. The result should be around zero,
-  # plus or minus square root of the index of dispersion
-  vals.unfiltered <- (y-x)/sqrt(y+x)
-  # Remove divide by zero cases, and--considering this is supposed to be count
-  # data--divide by almost-zero cases
-  vals <- vals.unfiltered[y + x  >= 1]
-  # Check that there's anything left
-  stopifnot(length(vals) >= 2)
-  # Assuming most of the normalized differences follow a normal distribution,
-  # estimate the standard deviation
-  val.sd <- l2e.normal.sd(vals)
-  # Square this standard deviation to obtain an estimate of the index of
-  # dispersion
-  return(val.sd^2)
-}
 
 # A variance-stabilizing transform for data where the mean varies but the index
 # of dispersion stays the same. "gat" stands for "generalized Anscombe transform"
@@ -74,10 +49,9 @@ tf.dp <- Vectorize(function(y, lam)
 }, "lam")
 
 # Segment a profile, and summarize the segments. Output has columns penalty,
-# mean, se, length, start_index, and end_index. Segmentation is performed for
-# each input penalty value, and each row int he output represents a
-# segment, giving the estimated mean of the segment, the standard error of the
-# mean, and the number of elements which were in the segment.
+# mean, se, length, start_index, and end_index. Each row in the output
+# represents a segment, giving the estimated mean of the segment, the standard
+# error of the mean, and the number of elements which were in the segment.
 segment.summarize <- function(inprof, penalty, trans, seg, loc, se)
 {
   # If the input penalties don't have names, name them. This is intended to make
@@ -85,61 +59,35 @@ segment.summarize <- function(inprof, penalty, trans, seg, loc, se)
   # Transform to try and get data which are normally distributed around a
   # segment-specific mean, with the same variance for each segment
   transformed.profile <- trans(inprof)
+  stopifnot(all(!is.nan(transformed.profile)) & all(!is.na(transformed.profile)))
 
-  # For each penalty value, get a segmented profile in long format--that is, of
-  # the same length of the original profile, but piecewise constant. Each
-  # segmented profile, corresponding to a penalty value, will be a column of a
-  # matrix.
-  npenalty <- length(penalty)
-  if (npenalty > 1)
-  {
-    segmented.profiles <- seg(transformed.profile, penalty)
-  } else if (npenalty == 1)
-  # If penalty is of length 1, by default we will get an array, not a matrix, and
-  # it needs to be converted to a matrix for downstream stuff to work
-  {
-    segmented.profiles <- as.matrix(seg(transformed.profile, penalty), ncol=1)
-  } else
-  # What's the remaining case? Length is 0. Conceptually I could return a table
-  # with no rows in that case, but the function is not really supposed to do
-  # nothing and not segment anything, so I'll make that an error case
-  {
-    stop("No penalty values given")
-  }
+  segmented.profile <- seg(transformed.profile, penalty)
 
   # For each penalty value, number elements of the profile according to what
   # segment they're in
-  segnums <- apply(segmented.profiles, 2, function(segmented.profile)
-    cumsum(c(TRUE, abs(diff(segmented.profile)) > 0.1))
-  )
+  segnums <- cumsum(c(TRUE, abs(diff(segmented.profile)) > 0.1))
 
   # Summarize the segments, recording three numbers: estimate the mean of each
   # segment, the standard error of the mean, and record the length of the
-  # segment.
-  means <- lapply(1:npenalty, function(i)
-    tapply(inprof, segnums[,i], loc)
-  )
-  standard.errors <- lapply(1:npenalty, function(i)
-    tapply(inprof, segnums[,i], se)
-  )
-  lengths <- lapply(1:npenalty, function(i)
-    tapply(inprof, segnums[,i], length)
-  )
+  # segment. Values are not transformed, since they are obtained from the
+  # original profile, using only the segment numbering derived from the
+  # segmented transformed profile.
+  means <- tapply(inprof, segnums, loc)
+  standard.errors <- tapply(inprof, segnums, se)
+  lengths <- tapply(inprof, segnums, length)
 
   # From the lengths, get the start and end indices
-  end.indices <- lapply(lengths, cumsum)
-  start.indices <- lapply(end.indices, function(x) c(0, x[-length(x)]) + 1)
+  end.indices <- cumsum(lengths)
+  start.indices <- c(0, end.indices[-length(end.indices)]) + 1
 
-  Reduce(rbind, lapply(1:length(penalty), function(i)
-    data.frame(penalty = penalty[i], mean=means[[i]], se=standard.errors[[i]],
-               length=lengths[[i]], start_index = start.indices[[i]],
-               end_index = end.indices[[i]])
-  ))
+  data.frame(mean=means, se=standard.errors,
+             length=lengths, start_index = start.indices,
+             end_index = end.indices)
 }
 
 prof2invals <- function(
   # The input required for segmentation: the profile to be segmented, and the
-  # penalty values for the segmentation
+  # penalty value for the segmentation
   inprof, penalty,
   # The input required for annotation: the data frame containing the
   # annotations, and the names of the columns which are going to be used. This
@@ -210,10 +158,17 @@ prof2invals <- function(
     SIMPLIFY=FALSE))
 
   return(annotated.segmented.counts[,c(
-    "penalty", colnames(left.annotations), colnames(right.annotations),
+    colnames(left.annotations), colnames(right.annotations),
     "mean", "se", "length"
   )])
 }
+
+seg2invals <- function(seg_mean, seg_length, iod, annotations)
+{
+  se <- sqrt(iod.est * seg_mean / seg_length)
+  return(cbind(annotations, data.frame(mean = seg_mean, se = se, length = seg_length)))
+}
+
 
 ### Empirical characteristic functions and maxima
 
@@ -221,8 +176,12 @@ prof2invals <- function(
 weighted.ecf <- Vectorize(function(y, sds, s)
 {
   stopifnot(length(y) == length(sds))
+  y <- y[sds > 0.00001]
+  sds <- sds[sds > 0.00001]
+  means <- exp(-2 * pi^2 * sds^2 * s^2)
   variances <- 1 - exp(-4 * pi^2 * sds^2 * s^2)
-  weights <- (1/variances) / sum(1/variances)
+  unnormalized.weights <- means / variances
+  weights <- unnormalized.weights / sum(unnormalized.weights)
   sum(weights * exp(1i * (2*pi) * s * y))
 }, 's')
 
@@ -248,6 +207,44 @@ ecf.global.max <- function(y, sds, smin=1, smax = 8)
       peak_phase = NA
     ))
   }
+}
+
+# Takes in copy numbers, ratio standard errors, the scaling factor, and input
+# values to the characteristic function. Outputs absolute value of the
+# characteristic function
+expected.peak.heights <- function(cn, ratio.se, scale, svals)
+{
+  nonzero.cn <- cn[cn > 0]
+  nonzero.se <- (ratio.se * scale)[cn > 0]
+
+  # Produce matrices, where each row is an s value, and each column is a segment
+  # Characteristic function of the noise
+  noise.cf <- t(sapply(svals, function(s)
+    exp(-(1/2) * nonzero.se^2 * (2 * pi * s)^2)
+  ))
+  # Characteristic function of the copy number. I'm considering the copy number
+  # to be a constant, but it still has a characteristic function, although a
+  # trivial one
+  # I'm leaving out the offset for now because I'm just calculating the modulus,
+  # which is not affected by it; but I should put it in just so the definitions
+  # don't look wrong
+  cn.cf <- t(sapply(svals, function(s)
+    exp(1i * (nonzero.cn / scale) * (2 * pi * s))
+  ))
+  # E[X] = Psi(2 pi s)
+  expected.values <- cn.cf * noise.cf
+  mean.norms <- noise.cf
+  # Var(X) = 1 - | Psi(2 pi s) |^2
+  variances <- 1 - mean.norms^2
+  unnormalized.weights <- mean.norms / variances
+  partition.function <- apply(unnormalized.weights, 1, sum)
+  weights <- unnormalized.weights / partition.function
+  weights[apply(weights, 1, function(x) any(is.nan(x)))] <- NA
+  this.theoretical.quantogram <-
+    apply(weights * expected.values, 1, sum)
+  background <- apply(weights^2 * variances, 1, sum)
+  expected.peak.height.function <- sqrt(Mod(this.theoretical.quantogram)^2 + background)
+  return(expected.peak.height.function)
 }
 
 quantum.sd <- function(x, mu)
