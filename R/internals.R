@@ -261,3 +261,28 @@ quantum.sd <- function(x, mu)
 irises.pluspurple <-
   c(`0`="#25292E", `1`="#9F3D0C", `2`="#CF601F", `3`="#E1DE96",
     `4`="#89AD71", `5`="#89C9E0", `6`="#556bb7", `>=7`="#8b44bb")
+
+# A function for estimating the index of dispersion, which is used when
+# estimating standard errors for each segment mean
+timeseries.iod <- function(v)
+{
+  # 3 elements, 2 differences, can find a standard deviation
+  stopifnot(length(v) >= 3)
+  # Differences between pairs of values
+  y <- v[-1]
+  x <- v[-length(v)]
+  # Normalize the differences using the sum. The result should be around zero,
+  # plus or minus square root of the index of dispersion
+  vals.unfiltered <- (y-x)/sqrt(y+x)
+  # Remove divide by zero cases, and--considering this is supposed to be count
+  # data--divide by almost-zero cases
+  vals <- vals.unfiltered[y + x  >= 1]
+  # Check that there's anything left
+  stopifnot(length(vals) >= 2)
+  # Assuming most of the normalized differences follow a normal distribution,
+  # estimate the standard deviation
+  val.sd <- l2e.normal.sd(vals)
+  # Square this standard deviation to obtain an estimate of the index of
+  # dispersion
+  return(val.sd^2)
+}
