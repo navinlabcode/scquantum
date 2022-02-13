@@ -1,23 +1,24 @@
 Package: scquantum
-Title: What the Package Does (One Line, Title Case)
-Version: 0.0.0.9000
+Title: Estimate Ploidy and Absolute Copy Number from Single Cell Sequencing
+Version: 0.1
 Authors@R: 
-    person(given = "First",
-           family = "Last",
+    person(given = "Alexander",
+           family = "Davis",
            role = c("aut", "cre"),
-           email = "first.last@example.com",
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
-License: What license it uses
+           email = "alexlovesmolecules@gmail.com")
+Description: Given bincount data from single-cell copy number profiling (segmented or unsegmented), estimates ploidy, and uses the ploidy estimate to scale the data to absolute copy numbers. Uses the modular quantogram proposed by Kendall (1986) <doi:10.1002/0471667196.ess2129.pub2>, modified by weighting segments according to confidence, and quantifying confidence in the estimate using a theoretical quantogram.
+License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.1.1
+RoxygenNote: 7.1.2
 Imports:
     ggplot2,
     patchwork,
     stringr,
     cowplot
 Suggests: 
+    testthat (>= 3.0.0),
     knitr,
     rmarkdown
 VignetteBuilder: knitr
+Config/testthat/edition: 3

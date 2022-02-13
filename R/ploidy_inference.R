@@ -1,3 +1,37 @@
+#' Ploidy inference with quantogram
+#'
+#' Infer ploidy of a cell, given a copy number profile.
+#' Constructs a quantogram (either modular or cosine, depending on parameters).
+#' The maximum of the quantogram is the estimated ploidy.
+#' If unsegmented bincounts are given, segmentation will be performed using the
+#' fused lasso.
+#'
+#' @param x Bincounts or segment means
+#' @param chrom Optional chromosome numbers
+#' @param start Optional bin/segment start positions
+#' @param end Optional bin/segment end positions
+#' @param penalty If segmenting, penalty parameter for the fused lasso (higher penalty, fewer segments)
+#' @param do_segmentation Boolean, whether to do segmentation (set this to TRUE if giving unsegmented bincounts)
+#' @param seg_length If giving already segmented data, length of each segment
+#' @param iod If giving already segmented data, the index of dispersion of the bincount distribution (that is, within segments, not including between-segment variance)
+#' @param mean_bincount If giving already segmented ratio values, the original mean bincount
+#'
+#' @return A ploidy inference object
+#'
+#' \describe{
+#'   \item{penalty}{The segmentation penalty given as an argument, if any}
+#'   \item{multiply_ratios_by}{To convert ratios to (unrounded) copy number estimates, multiply by this number}
+#'   \item{subtract_from_scaled_ratios}{To convert ratios to (unrounded) copy numbers, after multiplying, subtract this number. Only required if the count data have some extra reads even at copy number 0, generally due to mapping problems}
+#'   \item{ploidy}{The estimated ploidy}
+#'   \item{peak_height}{The height of the quantogram peak at the estimated ploidy. Between 0 and 1. Higher values indicate a stronger signal}
+#'   \item{segmentation}{The segmented values (either given as an argument, or produced interally by segmentation)}
+#'   \item{polar_quantogram}{The complex-valued quantogram, whose absolute values measure consistency with each possible ploidy}
+#'   \item{bincounts}{The raw bincounts given as an argument (if a segmentation was not given directly)}
+#'   \item{theoretical_quantogram}{Based on the inferred copy numbers and index of dispersion, what the absolute value of the quantogram should look like. Deviation of this theoretical quantogram from the real one indicate that the ploidy estimate may be wrong}
+#'   \item{theoretical_peak_height}{Height of the peak in the theoretical quantogram, measuring the expected strength of signal for the ploidy value}
+#'   \item{confidence_ratio}{Ratio of actual to theoretical peak height. Values near (or above) 1 indicate the signal was as strong as would be expected gievn this data quality and ploidy; low values indicate that the ploidy inference may be wrong or that there are unexpected quality issues with the data}
+#' }
+#'
 #' @export
 ploidy.inference <- function(x, chrom = NULL, start = NULL, end = NULL, penalty = 25,
   do_segmentation = TRUE, seg_length = NULL, iod = NULL, mean_bincount = NULL)
