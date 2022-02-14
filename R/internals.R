@@ -165,7 +165,7 @@ prof2invals <- function(
 
 seg2invals <- function(seg_mean, seg_length, iod, annotations)
 {
-  se <- sqrt(iod.est * seg_mean / seg_length)
+  se <- sqrt(iod * seg_mean / seg_length)
   return(cbind(annotations, data.frame(mean = seg_mean, se = se, length = seg_length)))
 }
 
