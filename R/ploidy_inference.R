@@ -37,7 +37,7 @@
 #' set.seed(705)
 #' cns <- rpois(30, 3) + 1
 #' x <- unlist(lapply(cns, function(cn) rpois(100, 25 * cn)))
-#' annotations <- tibble(chrom = 1, start = 1:length(x), end = 1:length(x))
+#' annotations <- data.frame(chrom = 1, start = 1:length(x), end = 1:length(x))
 #'
 #' # Inferring ploidy
 #' # Annotations and penalty are optional
