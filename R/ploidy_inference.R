@@ -32,6 +32,26 @@
 #'   \item{confidence_ratio}{Ratio of actual to theoretical peak height. Values near (or above) 1 indicate the signal was as strong as would be expected gievn this data quality and ploidy; low values indicate that the ploidy inference may be wrong or that there are unexpected quality issues with the data}
 #' }
 #'
+#' @examples
+#' # Generating a random copy number profile
+#' set.seed(705)
+#' cns <- rpois(30, 3) + 1
+#' x <- unlist(lapply(cns, function(cn) rpois(100, 25 * cn)))
+#' annotations <- tibble(chrom = 1, start = 1:length(x), end = 1:length(x))
+#'
+#' # Inferring ploidy
+#' # Annotations and penalty are optional
+#' estimate.from.bincounts <- ploidy.inference(x, annotations$chrom, annotations$start, penalty = 25)
+#'
+#' # Using scquantum internal functions to segment the data and estimate index of
+#' # dispersion
+#' mu.est <- mean(x)
+#' iod.est <- scquantum:::timeseries.iod(x)
+#' seg <- scquantum:::prof2invals(x, 25, annotations, "chrom", "start", "end")
+#' mean.est <- mean(x)
+#' iod.est <- scquantum:::timeseries.iod(x)
+#' estimate.from.segmentation <- ploidy.inference(seg$mean, seg$chrom, seg$start, seg$end, iod = iod.est, mean_bincount = mean.est, do_segmentation = FALSE)
+#'
 #' @export
 ploidy.inference <- function(x, chrom = NULL, start = NULL, end = NULL, penalty = 25,
   do_segmentation = TRUE, seg_length = NULL, iod = NULL, mean_bincount = NULL)
