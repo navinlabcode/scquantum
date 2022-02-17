@@ -56,12 +56,10 @@
 ploidy.inference <- function(x, chrom = NULL, start = NULL, end = NULL, penalty = 25,
   do_segmentation = TRUE, seg_length = NULL, iod = NULL, mean_bincount = NULL)
 {
-  # Make sure the penalties can be safely converted to a factor for splitting
-  # purposes
-  stopifnot(!any(duplicated(as.character(penalty))))
   stopifnot(is.numeric(x))
   stopifnot(is.numeric(penalty))
   stopifnot(length(penalty) == 1)
+  stopifnot(penalty > 0)
   if (!is.null(chrom))
   {
     annotations <- data.frame(chrom=chrom)
