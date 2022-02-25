@@ -1,2 +1,4 @@
 ^scquantum\.Rproj$
 ^\.Rproj\.user$
+^LICENSE\.md$
+^src/scquantum\.so$
