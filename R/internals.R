@@ -1,11 +1,19 @@
+#' Functions for processing raw profiles
+
 #' @import ggplot2
 #' @import patchwork
 
-### Functions for processing raw profiles
+
 
 # Estimate the standard deviation of a normal distribution with L2E, assuming
 # the normal distribution has mean 0.
 
+
+#' @export
+#' @keywords internal
+#' @name l2e.normal.sd
+#' @docType methods
+#' @rdname internals
 l2e.normal.sd <- function(xs)
 {
   # Need at least two values to get a standard deviation
@@ -26,6 +34,11 @@ l2e.normal.sd <- function(xs)
 # A variance-stabilizing transform for data where the mean varies but the index
 # of dispersion stays the same. "gat" stands for "generalized Anscombe transform"
 
+#' @export
+#' @keywords internal
+#' @name gat
+#' @docType methods
+#' @rdname internals
 gat <- function(x, iod)
 {
   # When index of dispersion is above 4, transformation will be imaginary for
@@ -40,6 +53,11 @@ gat <- function(x, iod)
 }
 
 #' @useDynLib scquantum tf_dp_wrapper
+#' @export
+#' @keywords internal
+#' @name tf.dp
+#' @docType methods
+#' @rdname internals
 tf.dp <- Vectorize(function(y, lam)
 {
   n <- length(y)
@@ -52,6 +70,11 @@ tf.dp <- Vectorize(function(y, lam)
 # mean, se, length, start_index, and end_index. Each row in the output
 # represents a segment, giving the estimated mean of the segment, the standard
 # error of the mean, and the number of elements which were in the segment.
+#' @export
+#' @keywords internal
+#' @name segment.summarize
+#' @docType methods
+#' @rdname internals
 segment.summarize <- function(inprof, penalty, trans, seg, loc, se)
 {
   # If the input penalties don't have names, name them. This is intended to make
@@ -85,6 +108,11 @@ segment.summarize <- function(inprof, penalty, trans, seg, loc, se)
              end_index = end.indices)
 }
 
+#' @export
+#' @keywords internal
+#' @name prof2invals
+#' @docType methods
+#' @rdname internals
 prof2invals <- function(
   # The input required for segmentation: the profile to be segmented, and the
   # penalty value for the segmentation
@@ -103,7 +131,7 @@ prof2invals <- function(
 
   # Estimate the index of dispersion, which will be used for estimating standard
   # errors of segment means, and for transformation
-  iod.est <- scquantum:::timeseries.iod(inprof)
+  iod.est <- timeseries.iod(inprof)
 
   # Split the annotations into two parts, one which will be accessed using the
   # segment start indices, and the other which will be accessed using the
@@ -137,7 +165,7 @@ prof2invals <- function(
           segments),
     # Split the profile by chromosome and segment each chromosome separately,
     # guaranteeing that chromosome boundaries are segment boundaries
-    tapply(inprof, annotations[[chrom.colname]], scquantum:::segment.summarize,
+    tapply(inprof, annotations[[chrom.colname]], segment.summarize,
            penalty=penalty,
       # The functions to be used to transform the data, to segment it, to estimate
       # the segment means, and to estimate the standard error of the means
@@ -146,7 +174,7 @@ prof2invals <- function(
         gat.result <- gat(x, iod=iod.est);
         ifelse(is.na(gat.result), 0, gat.result)
       },
-      seg = scquantum:::tf.dp, loc = stats::median,
+      seg = tf.dp, loc = stats::median,
       se = function(x) sqrt(pi/2) * sqrt(iod.est * stats::median(x) / length(x))
     ),
     # Chromosome annotations and bin start annotations, split by chromosome
@@ -163,6 +191,11 @@ prof2invals <- function(
   )])
 }
 
+#' @export
+#' @keywords internal
+#' @name seg2invals
+#' @docType methods
+#' @rdname internals
 seg2invals <- function(seg_mean, seg_length, iod, annotations)
 {
   se <- sqrt(iod * seg_mean / seg_length)
@@ -173,6 +206,11 @@ seg2invals <- function(seg_mean, seg_length, iod, annotations)
 ### Empirical characteristic functions and maxima
 
 # Evaluate the weighted empirical characteristic function
+#' @export
+#' @keywords internal
+#' @name weighted.ecf
+#' @docType methods
+#' @rdname internals
 weighted.ecf <- Vectorize(function(y, sds, s)
 {
   stopifnot(length(y) == length(sds))
@@ -186,6 +224,11 @@ weighted.ecf <- Vectorize(function(y, sds, s)
 }, 's')
 
 # Global maximum of the weighted empirical characteristic function
+#' @export
+#' @keywords internal
+#' @name ecf.global.max
+#' @docType methods
+#' @rdname internals
 ecf.global.max <- function(y, sds, smin=1, smax = 8)
 {
   stopifnot(length(y) == length(sds))
@@ -212,6 +255,11 @@ ecf.global.max <- function(y, sds, smin=1, smax = 8)
 # Takes in copy numbers, ratio standard errors, the scaling factor, and input
 # values to the characteristic function. Outputs absolute value of the
 # characteristic function
+#' @export
+#' @keywords internal
+#' @name expected.peak.heights
+#' @docType methods
+#' @rdname internals
 expected.peak.heights <- function(cn, ratio.se, scale, svals)
 {
   nonzero.cn <- cn[cn > 0]
@@ -247,6 +295,11 @@ expected.peak.heights <- function(cn, ratio.se, scale, svals)
   return(expected.peak.height.function)
 }
 
+#' @export
+#' @keywords internal
+#' @name quantum.sd
+#' @docType methods
+#' @rdname internals
 quantum.sd <- function(x, mu)
 {
   y <- x / mu
@@ -258,12 +311,22 @@ quantum.sd <- function(x, mu)
   ratio.variance * mu
 }
 
+#' @export
+#' @keywords internal
+#' @name irises.pluspurple
+#' @docType methods
+#' @rdname internals
 irises.pluspurple <-
   c(`0`="#25292E", `1`="#9F3D0C", `2`="#CF601F", `3`="#E1DE96",
     `4`="#89AD71", `5`="#89C9E0", `6`="#556bb7", `>=7`="#8b44bb")
 
 # A function for estimating the index of dispersion, which is used when
 # estimating standard errors for each segment mean
+#' @export
+#' @keywords internal
+#' @name timeseries.iod
+#' @docType methods
+#' @rdname internals
 timeseries.iod <- function(v)
 {
   # 3 elements, 2 differences, can find a standard deviation

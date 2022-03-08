@@ -43,16 +43,27 @@
 #' # Annotations and penalty are optional
 #' estimate.from.bincounts <- ploidy.inference(x, annotations$chrom, annotations$start, penalty = 25)
 #'
-#' # Using scquantum internal functions to segment the data and estimate index of
+#' # Using scquantum internal functions to segment the data and estimate index
+#' # of git@github.com:navinlabcode/scquantum.git
 #' # dispersion
 #' mu.est <- mean(x)
-#' iod.est <- scquantum:::timeseries.iod(x)
-#' seg <- scquantum:::prof2invals(x, 25, annotations, "chrom", "start", "end")
+#' iod.est <- timeseries.iod(x)
+#' seg <- prof2invals(x, 25, annotations, "chrom", "start", "end")
 #' mean.est <- mean(x)
-#' iod.est <- scquantum:::timeseries.iod(x)
-#' estimate.from.segmentation <- ploidy.inference(seg$mean, seg$chrom, seg$start, seg$end, iod = iod.est, mean_bincount = mean.est, do_segmentation = FALSE)
-#'
+#' iod.est <- timeseries.iod(x)
+#' estimate.from.segmentation <-
+#'   ploidy.inference(
+#'     seg$mean,
+#'     seg$chrom,
+#'     seg$start,
+#'     seg$end,
+#'     iod = iod.est,
+#'     mean_bincount = mean.est,
+#'     do_segmentation = FALSE
+#'   )
 #' @export
+#'
+
 ploidy.inference <- function(x, chrom = NULL, start = NULL, end = NULL, penalty = 25,
   do_segmentation = TRUE, seg_length = NULL, iod = NULL, mean_bincount = NULL)
 {
@@ -96,7 +107,7 @@ ploidy.inference <- function(x, chrom = NULL, start = NULL, end = NULL, penalty 
   {
     mu.est <- mean(x)
     segments <-
-      scquantum:::prof2invals(x, penalty, annotations, "chrom", "start", "end")
+      prof2invals(x, penalty, annotations, "chrom", "start", "end")
   } else
   {
     mu.est <- mean_bincount
@@ -107,7 +118,7 @@ ploidy.inference <- function(x, chrom = NULL, start = NULL, end = NULL, penalty 
     {
       seg_length <- end - start + 1
     }
-    segments <- scquantum:::seg2invals(seg_mean, seg_length, iod, annotations)
+    segments <- seg2invals(seg_mean, seg_length, iod, annotations)
   }
   if (is.null(chrom)) segments$chrom <- NULL
   filtered.segments <- segments[segments$length >= 20,]
@@ -117,7 +128,7 @@ ploidy.inference <- function(x, chrom = NULL, start = NULL, end = NULL, penalty 
   svals <- seq(1, 8, length.out=100)
   polar.quantogram <- data.frame(
         s = svals,
-        polar_quantogram = scquantum:::weighted.ecf(
+        polar_quantogram = weighted.ecf(
         filtered.ratio.segments$mean, filtered.ratio.segments$se,
         seq(1, 8, length.out=100))
       )
@@ -139,12 +150,12 @@ ploidy.inference <- function(x, chrom = NULL, start = NULL, end = NULL, penalty 
     }
   cn.est <- round(filtered.ratio.segments$mean * optimization.results$peak_location - optimization.results$peak_phase / (2*pi))
   theoretical.quantogram <- data.frame(s = svals,
-    theoretical_quantogram = scquantum:::expected.peak.heights(
+    theoretical_quantogram = expected.peak.heights(
       cn.est,
       filtered.ratio.segments$se,
       optimization.results$peak_location,
       svals))
-  theoretical.peak.height <- scquantum:::expected.peak.heights(
+  theoretical.peak.height <- expected.peak.heights(
       cn.est,
       filtered.ratio.segments$se,
       optimization.results$peak_location,
