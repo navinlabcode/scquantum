@@ -1,6 +1,6 @@
 Package: scquantum
 Title: Estimate Ploidy and Absolute Copy Number from Single Cell Sequencing
-Version: 0.1
+Version: 1.0.0
 Authors@R: c(
     person(given = "Alexander",
            family = "Davis",
