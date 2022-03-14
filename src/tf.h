@@ -18,45 +18,25 @@
  ****************************************************************************/
 
 /**
- * @file glmgen_api.c
+ * @file tf.h
  * @author Taylor Arnold, Ryan Tibshirani, Veerun Sadhanala
  * @date 2014-12-23
- * @brief Primary API entry points for user code.
+ * @brief Main functions for fitting trend filtering models.
  *
  * Here.
  */
 
-#ifndef GLMGEN_API_H
-#define GLMGEN_API_H
+#ifndef TF_H
+#define TF_H
 
-#include "cs.h"
-#include "tf.h"
-#include "utils.h"
+#include <math.h>
+#include <stdlib.h>
+#include <string.h>
+#include <float.h>
 
-/* User-level c functions here */
-double * tf_admm_default(double * y, int n);
+#define WEIGHT_SMALL DBL_EPSILON
 
-void tf_admm(double * x, double * y, double * w, int n, int k, int family,
-	     int max_iter, int lam_flag, double * lambda, 
-	     int nlambda, double lambda_min_ratio, int * df,
-	     double * beta, double * obj, int * iter, int * status, 
-	     double rho, double obj_tol, double obj_tol_newton, double alpha_ls,
-	     double gamma_ls, int max_iter_ls, int max_inner_iter, int verbose);
-
-void tf_predict(double * x, double * beta, int n, int k, int family,
-		double * x0, int n0, double * pred, double zero_tol);
-
-void thin(double* x, double* y, double* w, int n, int k,
-	  double** xt, double** yt, double** wt, int* nt_ptr, double x_tol);
-
-void do_lattice(double *y, double *w, int n, int m, int p, int max_iter,
-		double lambda, double rho, double eps,
-		int verbose, int naflag,
-		double *beta0,
-		double *beta1, double *beta2, double *beta3,
-		double *thisy1, double *thisy2,  double *thisy3,
-		double *u1, double *u2, double *u3, double *u4,
-		cs *E, double *c, int d,
-		double *buff, double *abuff, int lattice_type);
+/* Dynamic programming routines */
+void tf_dp (int n, double *y, double lam, double *beta);
 
 #endif
