@@ -1,7 +1,5 @@
 #' Functions for processing raw profiles
 
-#' @import ggplot2
-#' @import patchwork
 
 
 
